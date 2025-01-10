@@ -1,0 +1,50 @@
+Step 1: Setting Up the Project
+	1.	Backend: Set up a Node.js project using Express for the API.
+	•	Initialize the project with npm init.
+	•	Install necessary dependencies like express, body-parser, and optionally dotenv for environment variables.
+	•	Create a basic API structure (routes, controllers, and middleware).
+	2.	Frontend: Set up a React project with TypeScript.
+	•	Use create-react-app with TypeScript template or vite for a lightweight setup.
+	•	Install required dependencies, e.g., axios for API requests.
+
+Step 2: Backend - Campaign Management API
+	1.	Database Schema:
+	•	Campaign attributes:
+	•	id (auto-generated, unique)
+	•	title (string, required)
+	•	landingPageURL (string, required)
+	•	isRunning (boolean, default false)
+	•	payouts (array of objects with country and amount).
+	2.	API Endpoints:
+	•	POST /campaigns: Create a new campaign.
+	•	PUT /campaigns/:id/toggle: Toggle the isRunning flag.
+	•	GET /campaigns: List all campaigns with optional filters for title, URL, and status.
+	•	GET /campaigns/:id: Get campaign details.
+	•	DELETE /campaigns/:id: Delete a campaign.
+
+Step 3: Frontend - React Components
+	1.	Pages/Components:
+	•	Campaign List:
+	•	Display all campaigns.
+	•	Include search and filter functionality.
+	•	Create/Edit Campaign:
+	•	Form to add or edit a campaign (title, URL, payouts).
+	•	Campaign Details:
+	•	Show details of a single campaign.
+	•	Controls:
+	•	Button to toggle the campaign status.
+	2.	State Management:
+	•	Use React Context or a state management library like Redux if necessary.
+	3.	API Integration:
+	•	Use axios or fetch for API communication.
+	•	Centralize API calls in a utility file or custom hooks.
+
+Step 4: Bonus Features
+	1.	Implement search and filter functionality on the backend for better performance.
+	2.	Add a single test case for a critical part of the application (e.g., backend API validation or React form validation).
+	3.	Deploy the app (e.g., Vercel for frontend and Render for backend).
+
+Let me know where you’d like to start:
+	•	Setting up the backend,
+	•	Designing the frontend, or
+	•	Database schema. 😊

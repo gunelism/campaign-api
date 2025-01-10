@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=dev
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=userone
+      - DB_PASSWORD=userpass
+      - DB_NAME=campaigns
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres_adcash_container
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: userone
+      POSTGRES_PASSWORD: userpass
+      POSTGRES_DB: campaigns
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

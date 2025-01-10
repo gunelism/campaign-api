@@ -1,0 +1,53 @@
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+*.pid
+*.seed
+*.pid.lock
+
+# Environment variables
+.env
+.env.*.local
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Build output
+dist/
+build/
+out/
+
+# Coverage directories
+coverage/
+
+# Database and cache files
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+
+# Docker
+docker-compose.override.yml
+.env.docker.local
+docker-compose.override.*
+
+# IDE specific files
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+.vscode/
+.vscode-test/
+
+# Miscellaneous
+!.gitkeep
