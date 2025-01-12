@@ -56,8 +56,3 @@ export const errorHandler = (
   return res.status(statusCode).json(responsePayload);
 };
 
-// enhancements
-// 1. Integration with Monitoring Tools (sentr, datadog)
-// 2. Request Tracking for Debugging, use request id (using middleware like express-request-id) to find correlated errors
-// 3. Use log levels (e.g., info, warn, error)
-// 4. Rate Limiting or Retry After Failures.

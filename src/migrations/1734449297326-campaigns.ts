@@ -35,5 +35,3 @@ export class Campaigns1734449297326 implements MigrationInterface {
     await queryRunner.query(`DROP TABLE "campaigns"`);
   }
 }
-
-// need to add indexing to titles
