@@ -15,10 +15,26 @@ services:
       - DB_USERNAME=userone
       - DB_PASSWORD=userpass
       - DB_NAME=campaigns
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
     depends_on:
+      - postgres
+      - redis
+
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: npm test
+    environment:
+      - NODE_ENV=test
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
       - postgres
 
   postgres:
@@ -33,6 +49,13 @@ services:
       POSTGRES_DB: campaigns
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:alpine
+    container_name: redis_adcash_container
+    restart: always
+    ports:
+      - "6379:6379"
 
 volumes:
   postgres_data:

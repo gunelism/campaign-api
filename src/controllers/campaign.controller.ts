@@ -3,6 +3,7 @@ import * as cache from "memory-cache";
 import { AppDataSource } from "../data-source";
 import { Campaign } from "../entity/Campaign.entity";
 import { ApiError } from "../middleware/error.middleware";
+import redisClient from "../utils/redisClient";
 
 const campaignRepository = AppDataSource.getRepository(Campaign);
 export class CampaignController {
@@ -16,11 +17,19 @@ export class CampaignController {
         limit = 10,
       } = req.query;
 
+      const cacheKey = `campaigns_${JSON.stringify(req.query)}`;
+      const cachedData = await redisClient.get(cacheKey);
+
+      if (cachedData) {
+        console.log("Serving from cache");
+        return res.status(200).json(JSON.parse(cachedData));
+      }
+
+      console.log("Serving from db");
       const query = campaignRepository
         .createQueryBuilder("campaign")
         .leftJoinAndSelect("campaign.payouts", "payout");
 
-      // Apply filters based on query parameters
       if (title) {
         query.andWhere("LOWER(campaign.title) LIKE :title", {
           title: `%${(title as string).toLowerCase()}%`,
@@ -38,33 +47,21 @@ export class CampaignController {
           isRunning: isRunning === "true",
         });
       }
+
       query.skip((+page - 1) * +limit).take(+limit);
 
       const [results, totalCount] = await query.getManyAndCount();
 
-      return res.status(200).json({
+      const response = {
         data: results,
         total: totalCount,
         page: +page,
         limit: +limit,
-      });
-      //new cahe verions ---
-      //       const cacheKey = `campaigns_${JSON.stringify(req.query)}`;
-      // const cachedData = cache.get(cacheKey);
+      };
 
-      // if (cachedData) {
-      //   console.log("Serving from cache");
-      //   return res.status(200).json(cachedData);
-      // }
+      await redisClient.setEx(cacheKey, 10, JSON.stringify(response));
 
-      // const campaigns = await query.getManyAndCount();
-      // cache.put(cacheKey, { data: campaigns, total }, 10000);
-
-      // return res.status(200).json({
-      //   data: campaigns,
-      //   total,
-      // });
-      /// -----
+      return res.status(200).json(response);
     } catch (error) {
       next(
         new ApiError("Failed to fetch campaigns", 500, {
@@ -96,6 +93,8 @@ export class CampaignController {
       });
       await campaignRepository.save(campaign);
 
+      await redisClient.flushDb();
+
       return res
         .status(201)
         .json({ message: "Campaign created successfully", campaign });
@@ -122,6 +121,8 @@ export class CampaignController {
 
       campaign.isRunning = !campaign.isRunning;
       await campaignRepository.save(campaign);
+
+      await redisClient.flushDb();
 
       return res
         .status(200)
