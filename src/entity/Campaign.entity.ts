@@ -13,7 +13,7 @@ export class Campaign {
   id: string;
 
   @Index()
-  @Column()
+  @Column({ unique: true })
   title: string;
 
   @Column()

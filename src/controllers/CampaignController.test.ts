@@ -1,46 +1,35 @@
 import { Request, Response, NextFunction } from "express";
 import { CampaignController } from "./campaign.controller";
+import { CampaignService } from "../services/campaign.service";
 
-const mockQueryBuilder = {
-  leftJoinAndSelect: jest.fn().mockReturnThis(),
-  andWhere: jest.fn().mockReturnThis(),
-  skip: jest.fn().mockReturnThis(),
-  take: jest.fn().mockReturnThis(),
-  getManyAndCount: jest.fn(),
-};
-
-jest.mock("../data-source", () => ({
-  AppDataSource: {
-    getRepository: jest.fn().mockReturnValue({
-      createQueryBuilder: jest.fn().mockImplementation(() => mockQueryBuilder),
-    }),
-  },
-}));
-jest.mock("redis", () => ({
-  createClient: jest.fn().mockReturnValue({
-    connect: jest.fn(),
-    get: jest.fn(),
-    setEx: jest.fn(),
-    flushDb: jest.fn(),
-    on: jest.fn(),
-  }),
+jest.mock("../services/campaign.service");
+jest.mock("../utils/redisClient", () => ({
+  connect: jest.fn(),
+  disconnect: jest.fn(),
+  get: jest.fn().mockResolvedValue(null),
+  setEx: jest.fn(),
+  flushDb: jest.fn(),
+  on: jest.fn(),
 }));
 
-describe("CampaignController.listCampaigns", () => {
+describe("CampaignController", () => {
   let req: Partial<Request>;
   let res: Partial<Response>;
   let next: NextFunction;
 
   beforeEach(() => {
-    process.env.REDIS_HOST = "localhost";
-    process.env.REDIS_PORT = "6379";
-
     req = {
       query: {
         page: "1",
         limit: "10",
         title: "test",
       },
+      body: {
+        title: "New Campaign",
+        landingPageURL: "https://example.com",
+        payouts: [{ country: "US", amount: 5 }],
+      },
+      params: { id: "1" },
     };
 
     res = {
@@ -53,58 +42,106 @@ describe("CampaignController.listCampaigns", () => {
     jest.clearAllMocks();
   });
 
-  it("should fetch campaigns from database and return results", async () => {
-    mockQueryBuilder.getManyAndCount.mockResolvedValue([
-      [{ id: "1", title: "test campaign" }],
-      1,
-    ]);
+  afterAll(async () => {
+    const redisClient = require("../utils/redisClient");
+    await redisClient.disconnect();
+  });
 
-    await CampaignController.listCampaigns(
-      req as Request,
-      res as Response,
-      next,
-    );
+  describe("listCampaigns", () => {
+    it("should return campaigns from the service", async () => {
+      const serviceResponse = {
+        data: [{ id: "1", title: "test campaign" }],
+        total: 1,
+        page: 1,
+        limit: 10,
+      };
 
-    expect(mockQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
-      "campaign.payouts",
-      "payout",
-    );
-    expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
-      "LOWER(campaign.title) LIKE :title",
-      {
-        title: "%test%",
-      },
-    );
-    expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
-    expect(mockQueryBuilder.take).toHaveBeenCalledWith(10);
-    expect(mockQueryBuilder.getManyAndCount).toHaveBeenCalled();
+      (CampaignService.listCampaigns as jest.Mock).mockResolvedValue(
+        serviceResponse,
+      );
 
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({
-      data: [{ id: "1", title: "test campaign" }],
-      total: 1,
-      page: 1,
-      limit: 10,
+      await CampaignController.listCampaigns(
+        req as Request,
+        res as Response,
+        next,
+      );
+
+      expect(CampaignService.listCampaigns).toHaveBeenCalledWith(req.query);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(serviceResponse);
     });
   });
 
-  it("should handle errors and call next with an ApiError", async () => {
-    mockQueryBuilder.getManyAndCount.mockRejectedValue(
-      new Error("Database error"),
-    );
+  describe("createCampaign", () => {
+    it("should create a new campaign", async () => {
+      const serviceResponse = {
+        id: "1",
+        title: "New Campaign",
+        landingPageURL: "https://example.com",
+        payouts: [{ country: "US", amount: 5 }],
+      };
 
-    await CampaignController.listCampaigns(
-      req as Request,
-      res as Response,
-      next,
-    );
+      (CampaignService.createCampaign as jest.Mock).mockResolvedValue(
+        serviceResponse,
+      );
 
-    expect(mockQueryBuilder.getManyAndCount).toHaveBeenCalled();
-    expect(next).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: "Failed to fetch campaigns",
-        statusCode: 500,
-      }),
-    );
+      await CampaignController.createCampaign(
+        req as Request,
+        res as Response,
+        next,
+      );
+
+      expect(CampaignService.createCampaign).toHaveBeenCalledWith(req.body);
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Campaign created successfully",
+        campaign: serviceResponse,
+      });
+    });
+
+    it("should call next with an error if the service throws", async () => {
+      const error = new Error("Service Error");
+
+      (CampaignService.createCampaign as jest.Mock).mockRejectedValue(error);
+
+      await CampaignController.createCampaign(
+        req as Request,
+        res as Response,
+        next,
+      );
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Failed to create campaign",
+          statusCode: 500,
+        }),
+      );
+    });
+  });
+
+  describe("toggleCampaign", () => {
+    it("should toggle the campaign status", async () => {
+      const serviceResponse = {
+        id: "1",
+        isRunning: true,
+      };
+
+      (CampaignService.toggleCampaign as jest.Mock).mockResolvedValue(
+        serviceResponse,
+      );
+
+      await CampaignController.toggleCampaign(
+        req as Request,
+        res as Response,
+        next,
+      );
+
+      expect(CampaignService.toggleCampaign).toHaveBeenCalledWith("1");
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Campaign updated successfully",
+        campaign: serviceResponse,
+      });
+    });
   });
 });

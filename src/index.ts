@@ -8,10 +8,6 @@ import { campaignRouter } from "./routes/campaign.routes";
 import { errorHandler } from "./middleware/error.middleware";
 dotenv.config();
 
-// find the error and complete redis caching.
-// import Redis from 'ioredis';
-// const redis = new Redis();
-
 const app = express();
 app.use(express.json());
 const { PORT = 3000 } = process.env;
@@ -32,5 +28,3 @@ AppDataSource.initialize()
     console.log("Data Source has been initialized!");
   })
   .catch((error) => console.log(error));
-
-// include swagger

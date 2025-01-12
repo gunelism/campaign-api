@@ -1,66 +1,11 @@
 import { NextFunction, Request, Response } from "express";
-import * as cache from "memory-cache";
-import { AppDataSource } from "../data-source";
-import { Campaign } from "../entity/Campaign.entity";
+import { CampaignService } from "../services/campaign.service";
 import { ApiError } from "../middleware/error.middleware";
-import redisClient from "../utils/redisClient";
 
-const campaignRepository = AppDataSource.getRepository(Campaign);
 export class CampaignController {
   static async listCampaigns(req: Request, res: Response, next: NextFunction) {
     try {
-      const {
-        title,
-        landingPageURL,
-        isRunning,
-        page = 1,
-        limit = 10,
-      } = req.query;
-
-      const cacheKey = `campaigns_${JSON.stringify(req.query)}`;
-      const cachedData = await redisClient.get(cacheKey);
-
-      if (cachedData) {
-        console.log("Serving from cache");
-        return res.status(200).json(JSON.parse(cachedData));
-      }
-
-      console.log("Serving from db");
-      const query = campaignRepository
-        .createQueryBuilder("campaign")
-        .leftJoinAndSelect("campaign.payouts", "payout");
-
-      if (title) {
-        query.andWhere("LOWER(campaign.title) LIKE :title", {
-          title: `%${(title as string).toLowerCase()}%`,
-        });
-      }
-
-      if (landingPageURL) {
-        query.andWhere("LOWER(campaign.landingPageURL) LIKE :landingPageURL", {
-          landingPageURL: `%${(landingPageURL as string).toLowerCase()}%`,
-        });
-      }
-
-      if (isRunning !== undefined) {
-        query.andWhere("campaign.isRunning = :isRunning", {
-          isRunning: isRunning === "true",
-        });
-      }
-
-      query.skip((+page - 1) * +limit).take(+limit);
-
-      const [results, totalCount] = await query.getManyAndCount();
-
-      const response = {
-        data: results,
-        total: totalCount,
-        page: +page,
-        limit: +limit,
-      };
-
-      await redisClient.setEx(cacheKey, 10, JSON.stringify(response));
-
+      const response = await CampaignService.listCampaigns(req.query);
       return res.status(200).json(response);
     } catch (error) {
       next(
@@ -74,6 +19,7 @@ export class CampaignController {
   static async createCampaign(req: Request, res: Response, next: NextFunction) {
     try {
       const { title, landingPageURL, payouts } = req.body;
+
       if (
         !title ||
         !landingPageURL ||
@@ -86,14 +32,7 @@ export class CampaignController {
         );
       }
 
-      const campaign = campaignRepository.create({
-        title,
-        landingPageURL,
-        payouts,
-      });
-      await campaignRepository.save(campaign);
-
-      await redisClient.flushDb();
+      const campaign = await CampaignService.createCampaign(req.body);
 
       return res
         .status(201)
@@ -112,17 +51,8 @@ export class CampaignController {
   static async toggleCampaign(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const campaign = await campaignRepository.findOne({
-        where: { id },
-      });
-      if (!campaign) {
-        throw new ApiError("Campaign not found", 404);
-      }
 
-      campaign.isRunning = !campaign.isRunning;
-      await campaignRepository.save(campaign);
-
-      await redisClient.flushDb();
+      const campaign = await CampaignService.toggleCampaign(id);
 
       return res
         .status(200)

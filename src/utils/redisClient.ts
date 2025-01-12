@@ -22,4 +22,9 @@ redisClient.on("error", (err) => {
   }
 })();
 
+process.on("SIGINT", async () => {
+  await redisClient.disconnect();
+  process.exit(0);
+});
+
 export default redisClient;
